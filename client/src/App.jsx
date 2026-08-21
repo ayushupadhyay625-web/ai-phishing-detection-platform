@@ -5,13 +5,16 @@ import {
 } from "react-router-dom";
 
 import Layout from "./components/layout/Layout";
+
 import Dashboard from "./pages/Dashboard";
 import EmailScanner from "./pages/EmailScanner";
 import Login from "./pages/Login";
-import ProtectedRoute from "./routes/ProtectedRoute";
-import URLScanner from "./pages/URLScanner";
-import ScanHistory from "./pages/ScanHistory";
 import Reports from "./pages/Reports";
+import ScanHistory from "./pages/ScanHistory";
+import URLScanner from "./pages/URLScanner";
+
+import ProtectedRoute from "./routes/ProtectedRoute";
+
 
 const App = () => {
   return (
@@ -38,21 +41,24 @@ const App = () => {
           path="/scan/email"
           element={<EmailScanner />}
         />
+
+        <Route
+          path="/scan/url"
+          element={<URLScanner />}
+        />
+
+        <Route
+          path="/history"
+          element={<ScanHistory />}
+        />
+
+        <Route
+          path="/reports"
+          element={<Reports />}
+        />
       </Route>
-<Route
-  path="/scan/url"
-  element={<URLScanner />}
-/>
 
-<Route
-  path="/history"
-  element={<ScanHistory />}
-/>
 
-<Route
-  path="/reports"
-  element={<Reports />}
-/>
       <Route
         path="/"
         element={

@@ -1,9 +1,23 @@
 import {
   AlertTriangle,
+  AtSign,
+  BrainCircuit,
   CheckCircle2,
+  Clock3,
+  Cpu,
+  Download,
+  FileText,
+  Fingerprint,
+  Link2,
+  LockKeyhole,
+  Mail,
   MailWarning,
+  RotateCcw,
   Search,
   ShieldAlert,
+  ShieldCheck,
+  Sparkles,
+  UserRound,
 } from "lucide-react";
 
 import { useState } from "react";
@@ -17,6 +31,73 @@ const emptyEmail = {
   recipient: "",
   subject: "",
   body: "",
+};
+
+
+const sampleEmail = {
+  sender: "security@secure-login-verification.com",
+  recipient: "employee@company.com",
+  subject:
+    "Urgent: Verify Your Account to Avoid Suspension",
+  body: `Dear Valued Customer,
+
+We noticed unusual activity on your account and have temporarily restricted access.
+
+To restore full access, please verify your account immediately using the link below:
+
+http://192.168.1.10/login/verify-account
+
+This link will expire in 24 hours. Failure to verify your account may result in permanent suspension.
+
+Thank you,
+Account Security Team`,
+};
+
+
+const formatCategory = (category = "") => {
+  return category
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (letter) =>
+      letter.toUpperCase()
+    );
+};
+
+
+const getIndicatorSeverity = (weight = 0) => {
+  if (weight >= 25) {
+    return "high";
+  }
+
+  if (weight >= 10) {
+    return "medium";
+  }
+
+  return "low";
+};
+
+
+const getIndicatorIcon = (category = "") => {
+  const normalizedCategory =
+    category.toLowerCase();
+
+  if (normalizedCategory.includes("url")) {
+    return Link2;
+  }
+
+  if (
+    normalizedCategory.includes("sender") ||
+    normalizedCategory.includes("domain")
+  ) {
+    return AtSign;
+  }
+
+  if (
+    normalizedCategory.includes("credential")
+  ) {
+    return LockKeyhole;
+  }
+
+  return AlertTriangle;
 };
 
 
@@ -86,62 +167,148 @@ const EmailScanner = () => {
   };
 
 
-  const getVerdictIcon = () => {
-    if (result?.verdict === "phishing") {
-      return <ShieldAlert size={30} />;
-    }
+  const loadSampleEmail = () => {
+    setEmailData(sampleEmail);
+    setResult(null);
 
-    if (result?.verdict === "suspicious") {
-      return <AlertTriangle size={30} />;
-    }
-
-    return <CheckCircle2 size={30} />;
+    toast.success("Sample email loaded");
   };
 
 
+  const downloadReport = () => {
+    if (!result) {
+      return;
+    }
+
+    const report = {
+      generatedAt: new Date().toISOString(),
+      email: emailData,
+      analysis: result,
+    };
+
+    const file = new Blob(
+      [JSON.stringify(report, null, 2)],
+      {
+        type: "application/json",
+      }
+    );
+
+    const downloadUrl =
+      URL.createObjectURL(file);
+
+    const link =
+      document.createElement("a");
+
+    link.href = downloadUrl;
+    link.download =
+      `phishguard-email-report-${result._id || Date.now()}.json`;
+
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    URL.revokeObjectURL(downloadUrl);
+
+    toast.success("Security report downloaded");
+  };
+
+
+  const verdict =
+    result?.verdict || "unknown";
+
+  const riskScore =
+    Number(result?.riskScore) || 0;
+
+  const confidence =
+    Number(result?.confidence) || 0;
+
+  const ruleScore =
+    Number(result?.ruleRiskScore) || 0;
+
+  const mlScore =
+    Number(result?.mlRiskScore) || 0;
+
+  const indicators =
+    result?.detectedIndicators || [];
+
+  const extractedUrls =
+    result?.extractedUrls || [];
+
+
   return (
-    <>
-      <section className="page-heading">
+    <div className="modern-email-scanner">
+      <section className="email-page-heading">
+        <div className="email-heading-icon">
+          <MailWarning size={27} />
+        </div>
+
         <div>
-          <p className="section-label">
-            EMAIL THREAT ANALYSIS
-          </p>
+          <div className="email-heading-labels">
+            <span className="section-label">
+              EMAIL THREAT ANALYSIS
+            </span>
+
+            <span className="live-analysis-badge">
+              <i />
+              LIVE ANALYSIS
+            </span>
+          </div>
 
           <h1>Phishing Email Scanner</h1>
 
           <p>
-            Analyze email content, sender
-            information, urgency signals, and
-            embedded URLs.
+            Analyze message content, sender
+            identity, urgency signals, and
+            embedded URLs with explainable AI.
           </p>
         </div>
+
+        <button
+          type="button"
+          className="sample-email-button"
+          onClick={loadSampleEmail}
+        >
+          <Sparkles size={16} />
+          Load sample
+        </button>
       </section>
 
 
-      <section className="scanner-grid">
-        <article className="panel scanner-panel">
-          <div className="panel-header">
+      <section className="modern-email-grid">
+        <article className="email-glass-card email-input-card">
+          <header className="email-card-header">
             <div>
-              <span className="panel-label">
-                EMAIL INPUT
+              <span className="email-card-icon blue">
+                <Mail size={18} />
               </span>
 
-              <h2>Message information</h2>
+              <div>
+                <span className="panel-label">
+                  EMAIL INPUT
+                </span>
+
+                <h2>Message information</h2>
+              </div>
             </div>
 
-            <MailWarning size={21} />
-          </div>
+            <span className="encrypted-pill">
+              <LockKeyhole size={13} />
+              Encrypted
+            </span>
+          </header>
 
 
           <form
-            className="scanner-form"
+            className="modern-email-form"
             onSubmit={handleScan}
           >
-            <div className="two-column-fields">
-              <label className="input-group">
-                <span>Sender</span>
+            <div className="modern-two-fields">
+              <label className="modern-field">
+                <span>Sender address</span>
 
-                <div className="input-wrapper">
+                <div className="modern-field-wrapper">
+                  <AtSign size={17} />
+
                   <input
                     type="text"
                     name="sender"
@@ -153,10 +320,12 @@ const EmailScanner = () => {
               </label>
 
 
-              <label className="input-group">
+              <label className="modern-field">
                 <span>Recipient</span>
 
-                <div className="input-wrapper">
+                <div className="modern-field-wrapper">
+                  <UserRound size={17} />
+
                   <input
                     type="email"
                     name="recipient"
@@ -169,10 +338,12 @@ const EmailScanner = () => {
             </div>
 
 
-            <label className="input-group">
-              <span>Subject</span>
+            <label className="modern-field">
+              <span>Subject line</span>
 
-              <div className="input-wrapper">
+              <div className="modern-field-wrapper">
+                <FileText size={17} />
+
                 <input
                   type="text"
                   name="subject"
@@ -184,39 +355,72 @@ const EmailScanner = () => {
             </label>
 
 
-            <label className="input-group">
+            <label className="modern-field">
               <span>Email body</span>
 
-              <textarea
-                className="scanner-textarea"
-                name="body"
-                rows={12}
-                placeholder="Paste the complete email content here..."
-                value={emailData.body}
-                onChange={handleChange}
-                required
-              />
+              <div className="modern-textarea-wrapper">
+                <textarea
+                  name="body"
+                  rows={15}
+                  placeholder="Paste the complete email content here..."
+                  value={emailData.body}
+                  onChange={handleChange}
+                  required
+                />
+
+                <span className="character-counter">
+                  {emailData.body.length.toLocaleString()}
+                  {" "}characters
+                </span>
+              </div>
             </label>
 
 
-            <div className="scanner-actions">
+            <div className="email-analysis-summary">
+              <div>
+                <ShieldCheck size={16} />
+
+                <span>
+                  Content is processed securely
+                  and used only for threat
+                  analysis.
+                </span>
+              </div>
+
+              <span>
+                {emailData.body.trim()
+                  ? "Ready to analyze"
+                  : "Waiting for content"}
+              </span>
+            </div>
+
+
+            <div className="modern-scanner-actions">
               <button
                 type="submit"
-                className="primary-button scan-button"
+                className="modern-analyze-button"
                 disabled={scanning}
               >
-                <Search size={17} />
-
-                {scanning
-                  ? "ANALYZING EMAIL..."
-                  : "ANALYZE EMAIL"}
+                {scanning ? (
+                  <>
+                    <span className="button-spinner" />
+                    Running AI analysis...
+                  </>
+                ) : (
+                  <>
+                    <Search size={18} />
+                    Analyze email
+                  </>
+                )}
               </button>
 
               <button
                 type="button"
-                className="secondary-button"
+                className="modern-clear-button"
                 onClick={clearScanner}
+                disabled={scanning}
               >
+                <RotateCcw size={17} />
                 Clear
               </button>
             </div>
@@ -224,203 +428,387 @@ const EmailScanner = () => {
         </article>
 
 
-        <article className="panel result-panel">
-          <div className="panel-header">
+        <article className="email-glass-card email-result-card">
+          <header className="email-card-header">
             <div>
-              <span className="panel-label">
-                ANALYSIS RESULT
+              <span className="email-card-icon violet">
+                <ShieldAlert size={18} />
               </span>
 
-              <h2>Threat assessment</h2>
+              <div>
+                <span className="panel-label">
+                  ANALYSIS RESULT
+                </span>
+
+                <h2>Threat assessment</h2>
+              </div>
             </div>
 
-            <ShieldAlert size={21} />
-          </div>
+            {result && (
+              <button
+                type="button"
+                className="download-analysis-button"
+                onClick={downloadReport}
+              >
+                <Download size={15} />
+                Download report
+              </button>
+            )}
+          </header>
 
 
           {!result ? (
-            <div className="empty-state result-empty">
-              <Search size={40} />
+            <div className="modern-result-empty">
+              <div className="empty-scanner-visual">
+                <div className="empty-orbit orbit-a" />
+                <div className="empty-orbit orbit-b" />
+
+                <Search size={34} />
+              </div>
+
+              <h3>Ready for analysis</h3>
 
               <p>
-                Submit an email to view its
-                security assessment.
+                Submit an email to generate an
+                explainable security assessment.
               </p>
+
+              <div className="empty-analysis-steps">
+                <span>Content inspection</span>
+                <span>URL intelligence</span>
+                <span>ML classification</span>
+              </div>
             </div>
           ) : (
-            <div className="analysis-result">
-              <div
-                className={
-                  `verdict-summary ${result.verdict}`
-                }
-              >
-                <div className="verdict-icon">
-                  {getVerdictIcon()}
+            <div className="advanced-analysis-result">
+              <section className="result-overview">
+                <div
+                  className={
+                    `email-risk-ring ${verdict}`
+                  }
+                  style={{
+                    "--email-risk":
+                      `${riskScore * 3.6}deg`,
+                  }}
+                >
+                  <div>
+                    <strong>{riskScore}</strong>
+                    <span>/100</span>
+                    <small>RISK SCORE</small>
+                  </div>
                 </div>
 
-                <div>
+
+                <div className="verdict-details">
                   <span>VERDICT</span>
 
-                  <h3>
-                    {result.verdict}
+                  <h3 className={verdict}>
+                    {verdict}
                   </h3>
+
+                  <span>CONFIDENCE</span>
+
+                  <strong>{confidence}%</strong>
+
+                  <small
+                    className={
+                      confidence >= 80
+                        ? "high"
+                        : "moderate"
+                    }
+                  >
+                    {confidence >= 80
+                      ? "High confidence"
+                      : "Moderate confidence"}
+                  </small>
                 </div>
 
-                <div className="risk-score">
-                  <strong>
-                    {result.riskScore}
-                  </strong>
 
-                  <span>/100 RISK</span>
-                </div>
-              </div>
-
-
-              <div className="confidence-row">
-                <span>
-                  Detection confidence
-                </span>
-
-                <strong>
-                  {result.confidence}%
-                </strong>
-              </div>
-<div className="hybrid-score-panel">
-  <div className="hybrid-score-heading">
-    <span>HYBRID RISK CALCULATION</span>
-
-    <strong>
-      70% RULES + 30% ML
-    </strong>
-  </div>
-
-
-  <div className="score-comparison">
-    <div>
-      <span>Rule engine</span>
-
-      <strong>
-        {result.ruleRiskScore || 0}
-      </strong>
-
-      <div className="score-bar">
-        <i
-          style={{
-            width:
-              `${result.ruleRiskScore || 0}%`,
-          }}
-        />
-      </div>
-    </div>
-
-
-    <div>
-      <span>ML probability</span>
-
-      <strong>
-        {result.mlRiskScore || 0}%
-      </strong>
-
-      <div className="score-bar ml">
-        <i
-          style={{
-            width:
-              `${result.mlRiskScore || 0}%`,
-          }}
-        />
-      </div>
-    </div>
-  </div>
-
-
-  <div className="model-prediction">
-    <span>ML prediction</span>
-
-    <strong
-      className={
-        result.mlAnalysis?.prediction ||
-        "unavailable"
-      }
-    >
-      {result.mlAnalysis?.prediction ||
-        "unavailable"}
-    </strong>
-  </div>
-</div>
-
-              <div className="indicator-section">
-                <div className="indicator-heading">
-                  <span>
-                    DETECTED INDICATORS
+                <div className="hybrid-breakdown">
+                  <span className="result-section-title">
+                    HYBRID SCORE BREAKDOWN
                   </span>
 
-                  <strong>
-                    {
-                      result
-                        .detectedIndicators
-                        .length
-                    }
-                  </strong>
+                  <div className="hybrid-score-row rules">
+                    <span className="hybrid-icon">
+                      <Cpu size={16} />
+                    </span>
+
+                    <div>
+                      <span>Rules engine</span>
+
+                      <div className="hybrid-progress">
+                        <i
+                          style={{
+                            width:
+                              `${Math.min(
+                                ruleScore,
+                                100
+                              )}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    <strong>{ruleScore}%</strong>
+                  </div>
+
+
+                  <div className="hybrid-score-row ml">
+                    <span className="hybrid-icon">
+                      <BrainCircuit size={16} />
+                    </span>
+
+                    <div>
+                      <span>ML model</span>
+
+                      <div className="hybrid-progress">
+                        <i
+                          style={{
+                            width:
+                              `${Math.min(
+                                mlScore,
+                                100
+                              )}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    <strong>{mlScore}%</strong>
+                  </div>
+                </div>
+              </section>
+
+
+              <section className="threat-severity-section">
+                <div>
+                  <span className="result-section-title">
+                    THREAT SEVERITY
+                  </span>
+
+                  <strong>{riskScore}/100</strong>
                 </div>
 
-                <div className="indicator-list">
-                  {result.detectedIndicators
-                    .length > 0 ? (
-                    result.detectedIndicators.map(
-                      (item) => (
-                        <div
-                          className="indicator-item"
-                          key={item._id}
-                        >
-                          <AlertTriangle
-                            size={16}
-                          />
+                <div className="severity-track">
+                  <i
+                    style={{
+                      left:
+                        `calc(${Math.min(
+                          riskScore,
+                          100
+                        )}% - 6px)`,
+                    }}
+                  />
+                </div>
 
-                          <div>
-                            <strong>
-                              {item.indicator}
-                            </strong>
+                <div className="severity-labels">
+                  <span>Low</span>
+                  <span>Medium</span>
+                  <span>High</span>
+                  <span>Critical</span>
+                </div>
+              </section>
 
-                            <span>
-                              {item.category
-                                .replace(
-                                  "_",
-                                  " "
-                                )}
-                            </span>
-                          </div>
 
-                          <b>
-                            +{item.weight}
-                          </b>
-                        </div>
-                      )
-                    )
+              <section className="email-result-details">
+                <div className="advanced-indicators">
+                  <div className="result-subheading">
+                    <span>
+                      DETECTED INDICATORS
+                    </span>
+
+                    <strong>
+                      {indicators.length}
+                    </strong>
+                  </div>
+
+                  {indicators.length > 0 ? (
+                    <div className="advanced-indicator-list">
+                      {indicators.map(
+                        (indicator, index) => {
+                          const severity =
+                            getIndicatorSeverity(
+                              indicator.weight
+                            );
+
+                          const IndicatorIcon =
+                            getIndicatorIcon(
+                              indicator.category
+                            );
+
+                          return (
+                            <div
+                              className={
+                                `advanced-indicator ${severity}`
+                              }
+                              key={
+                                indicator._id ||
+                                `${indicator.category}-${index}`
+                              }
+                            >
+                              <span className="indicator-symbol">
+                                <IndicatorIcon
+                                  size={16}
+                                />
+                              </span>
+
+                              <div>
+                                <strong>
+                                  {
+                                    indicator.indicator
+                                  }
+                                </strong>
+
+                                <small>
+                                  {formatCategory(
+                                    indicator.category
+                                  )}
+                                </small>
+                              </div>
+
+                              <span
+                                className={
+                                  `indicator-severity ${severity}`
+                                }
+                              >
+                                {severity}
+                              </span>
+
+                              <b>
+                                +{indicator.weight}
+                              </b>
+                            </div>
+                          );
+                        }
+                      )}
+                    </div>
                   ) : (
-                    <div className="safe-message">
-                      <CheckCircle2
-                        size={18}
-                      />
+                    <div className="advanced-safe-message">
+                      <CheckCircle2 size={19} />
 
-                      No major phishing
-                      indicators detected.
+                      <div>
+                        <strong>
+                          No major threats detected
+                        </strong>
+
+                        <span>
+                          The analyzed content did
+                          not trigger phishing
+                          indicators.
+                        </span>
+                      </div>
                     </div>
                   )}
                 </div>
-              </div>
 
 
-              <div className="method-label">
-                Detection method:
-                <strong>
-                  {result.detectionMethod}
-                </strong>
-              </div>
+                <aside className="url-intelligence-card">
+                  <div className="result-subheading">
+                    <span>
+                      EXTRACTED URL INTELLIGENCE
+                    </span>
+
+                    <Link2 size={16} />
+                  </div>
+
+                  {extractedUrls.length > 0 ? (
+                    <div className="url-intelligence-list">
+                      {extractedUrls.map(
+                        (url, index) => (
+                          <div
+                            className="extracted-url-item"
+                            key={`${url}-${index}`}
+                          >
+                            <Link2 size={16} />
+
+                            <span>{url}</span>
+                          </div>
+                        )
+                      )}
+
+                      <div className="url-detail-row">
+                        <span>URL status</span>
+
+                        <strong className={verdict}>
+                          {verdict}
+                        </strong>
+                      </div>
+
+                      <div className="url-detail-row">
+                        <span>URLs detected</span>
+
+                        <strong>
+                          {extractedUrls.length}
+                        </strong>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="no-url-message">
+                      <ShieldCheck size={25} />
+
+                      <span>
+                        No embedded URLs detected
+                      </span>
+                    </div>
+                  )}
+                </aside>
+              </section>
+
+
+              <footer className="analysis-metadata">
+                <div>
+                  <span className="metadata-icon">
+                    <BrainCircuit size={17} />
+                  </span>
+
+                  <span>
+                    <small>DETECTION ENGINE</small>
+                    <strong>
+                      {result.detectionMethod ||
+                        "Hybrid ML + Rule Fusion"}
+                    </strong>
+                  </span>
+                </div>
+
+                <div>
+                  <span className="metadata-icon">
+                    <Clock3 size={17} />
+                  </span>
+
+                  <span>
+                    <small>ANALYSIS TIME</small>
+                    <strong>
+                      {new Date(
+                        result.createdAt ||
+                          Date.now()
+                      ).toLocaleString()}
+                    </strong>
+                  </span>
+                </div>
+
+                <div>
+                  <span className="metadata-icon">
+                    <Fingerprint size={17} />
+                  </span>
+
+                  <span>
+                    <small>SCAN ID</small>
+                    <strong>
+                      {result._id
+                        ? result._id
+                            .slice(-10)
+                            .toUpperCase()
+                        : "AVAILABLE"}
+                    </strong>
+                  </span>
+                </div>
+              </footer>
             </div>
           )}
         </article>
       </section>
-    </>
+    </div>
   );
 };
 
