@@ -1,0 +1,28 @@
+# Environment secrets
+.env
+.env.*
+!.env.example
+
+# Node.js
+node_modules/
+client/node_modules/
+server/node_modules/
+client/dist/
+
+# Python
+venv/
+.venv/
+ml-service/venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editors and operating system
+.vscode/
+.DS_Store
+Thumbs.db
+desktop.ini
