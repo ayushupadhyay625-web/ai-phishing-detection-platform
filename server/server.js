@@ -81,7 +81,26 @@ app.get("/api/health", (req, res) => {
     database: "connected",
   });
 });
+// Return JSON for unknown API routes.
+app.use("/api", (req, res) => {
+  res.status(404).json({
+    success: false,
+    message: `API route not found: ${req.method} ${req.originalUrl}`,
+  });
+});
 
+// Centralized JSON error handler.
+app.use((error, req, res, next) => {
+  console.error("Unhandled server error:", error);
+
+  res.status(error.status || 500).json({
+    success: false,
+    message:
+      process.env.NODE_ENV === "production"
+        ? "An unexpected server error occurred"
+        : error.message,
+  });
+});
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
 });
