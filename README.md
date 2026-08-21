@@ -70,3 +70,11 @@ Python Flask Detection Service
       +---- Rule-Based Detection Engine
       |
       +---- Trained Machine-Learning Model
+
+## Live Deployment
+
+- Web Application: https://phishguard-ai-vpn4.onrender.com
+- Backend API: https://phishguard-api-e7bh.onrender.com
+- ML Service Health: https://phishguard-ml-service.onrender.com/api/health
+
+> The services use Render’s free tier, so the first request after inactivity may take up to two minutes.      
