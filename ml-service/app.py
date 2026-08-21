@@ -27,7 +27,7 @@ def health():
             "status": "healthy",
             "service": "Python Phishing Detection Service",
             "model_status": "hybrid_detection_engine_loaded",
-            "detection_method": "hybrid-explainable-engine-v1",
+            "detection_method": "advanced-url-threat-engine-v2",
         }
     )
 
