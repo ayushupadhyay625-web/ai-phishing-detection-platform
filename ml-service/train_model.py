@@ -1,3 +1,4 @@
+import csv
 from pathlib import Path
 
 import joblib
@@ -13,6 +14,10 @@ from sklearn.linear_model import (
 from sklearn.metrics import (
     accuracy_score,
     classification_report,
+    confusion_matrix,
+    f1_score,
+    precision_score,
+    recall_score,
 )
 
 from sklearn.model_selection import (
@@ -24,163 +29,358 @@ from sklearn.pipeline import Pipeline
 
 BASE_DIRECTORY = Path(__file__).resolve().parent
 
-MODEL_DIRECTORY = BASE_DIRECTORY / "models"
-
-MODEL_PATH = (
-    MODEL_DIRECTORY /
-    "phishing_email_model.joblib"
+DATASET_PATH = (
+    BASE_DIRECTORY
+    / "data"
+    / "phishing_emails_1000.csv"
 )
 
+MODEL_DIRECTORY = (
+    BASE_DIRECTORY / "models"
+)
 
-SAFE_EMAILS = [
-    "Your meeting is scheduled for Monday at 10 AM.",
-    "Please find the monthly sales report attached.",
-    "Thank you for completing the project documentation.",
-    "Your leave request has been approved.",
-    "The development team will deploy the update tonight.",
-    "Please review the attached invoice for our recent order.",
-    "Your interview has been scheduled for tomorrow.",
-    "The office will remain closed during the public holiday.",
-    "Here are the minutes from our weekly team meeting.",
-    "Your package has been dispatched and will arrive tomorrow.",
-    "Please submit your attendance report before Friday.",
-    "The customer support team resolved your ticket.",
-    "Welcome to the organization. Your employee account is ready.",
-    "The quarterly performance review meeting is next week.",
-    "Your password was changed successfully as requested.",
-    "Your training session begins at 2 PM today.",
-    "Please review the latest project requirements.",
-    "The payment for invoice 2045 has been received.",
-    "Your reservation is confirmed for this weekend.",
-    "The updated company policy is available on the employee portal.",
-    "Please join the video conference using the official company calendar.",
-    "Your account statement is available through the official banking application.",
-    "The security team completed the scheduled maintenance.",
-    "Thank you for attending yesterday's workshop.",
-    "Your request has been received and is being processed.",
-    "The finance department has approved your reimbursement.",
-    "The attached document contains the final project proposal.",
-    "Please remember to update your weekly task status.",
-    "Your subscription renewal was completed successfully.",
-    "This is a reminder for your appointment tomorrow morning.",
-]
+MODEL_PATH = (
+    MODEL_DIRECTORY
+    / "phishing_email_model.joblib"
+)
+
+RANDOM_STATE = 42
 
 
-PHISHING_EMAILS = [
-    "URGENT! Your account is suspended. Verify your password immediately.",
-    "Click here now to confirm your bank account and avoid permanent closure.",
-    "You won a cash prize. Send your OTP to claim it immediately.",
-    "Your mailbox storage is full. Login now to prevent email deletion.",
-    "Unusual activity detected. Verify your account through this link.",
-    "Your payment failed. Update your card number and CVV immediately.",
-    "Final warning! Your account will be terminated unless you confirm your password.",
-    "Congratulations winner. Click the link to receive your free reward.",
-    "Security alert. Enter your OTP and PIN to restore account access.",
-    "Your tax refund is waiting. Submit your bank information now.",
-    "We detected suspicious login activity. Verify your credentials urgently.",
-    "Your salary payment is blocked. Confirm your banking password.",
-    "Click this shortened link to reactivate your suspended account.",
-    "Your social media profile has been reported. Login immediately.",
-    "Bank security notice. Confirm account details to avoid deactivation.",
-    "You have received an unexpected payment. Verify your identity now.",
-    "Your delivery cannot be completed. Pay the small redelivery fee.",
-    "Important invoice attached. Enable macros to view the document.",
-    "Your company email will expire today. Enter your password to continue.",
-    "Emergency request from the CEO. Purchase gift cards immediately.",
-    "Your cloud files will be deleted. Login through the secure link now.",
-    "Account verification required. Provide password OTP and card PIN.",
-    "You are selected for a reward. Click here and submit payment details.",
-    "Your bank account has been compromised. Confirm credentials urgently.",
-    "Limited time refund available. Enter your debit card information.",
-    "Your employee payroll account is locked. Verify your password now.",
-    "Download the attachment and enable editing to view the confidential file.",
-    "Your streaming subscription was suspended. Update payment information.",
-    "Immediate action required. Confirm your identity using the link below.",
-    "Your email account has exceeded its limit. Login to keep your messages.",
-]
+def load_training_dataset():
+    if not DATASET_PATH.exists():
+        raise FileNotFoundError(
+            "Training dataset was not found at: "
+            f"{DATASET_PATH}\n"
+            "Run generate_dataset.py first."
+        )
 
+    messages = []
+    labels = []
 
-def create_training_dataset():
-    messages = SAFE_EMAILS + PHISHING_EMAILS
+    with DATASET_PATH.open(
+        "r",
+        encoding="utf-8",
+        newline="",
+    ) as csv_file:
+        reader = csv.DictReader(csv_file)
 
-    labels = (
-        ["safe"] * len(SAFE_EMAILS)
-        + ["phishing"] * len(PHISHING_EMAILS)
+        required_columns = {
+            "subject",
+            "body",
+            "label",
+        }
+
+        available_columns = set(
+            reader.fieldnames or []
+        )
+
+        missing_columns = (
+            required_columns
+            - available_columns
+        )
+
+        if missing_columns:
+            raise ValueError(
+                "Dataset is missing these columns: "
+                + ", ".join(
+                    sorted(missing_columns)
+                )
+            )
+
+        for row in reader:
+            subject = (
+                row.get("subject", "")
+                .strip()
+            )
+
+            body = (
+                row.get("body", "")
+                .strip()
+            )
+
+            sender = (
+                row.get("sender", "")
+                .strip()
+            )
+
+            label = (
+                row.get("label", "")
+                .strip()
+                .lower()
+            )
+
+            if label not in {
+                "safe",
+                "phishing",
+            }:
+                continue
+
+            message = (
+                f"Sender: {sender}\n"
+                f"Subject: {subject}\n"
+                f"Body: {body}"
+            )
+
+            if not message.strip():
+                continue
+
+            messages.append(message)
+            labels.append(label)
+
+    if len(messages) < 10:
+        raise ValueError(
+            "The training dataset does not "
+            "contain enough valid records."
+        )
+
+    safe_count = labels.count("safe")
+
+    phishing_count = labels.count(
+        "phishing"
+    )
+
+    if (
+        safe_count == 0
+        or phishing_count == 0
+    ):
+        raise ValueError(
+            "The dataset must contain both "
+            "safe and phishing records."
+        )
+
+    print("=" * 60)
+    print("PHISHGUARD AI MODEL TRAINING")
+    print("=" * 60)
+
+    print(
+        f"Dataset file: {DATASET_PATH}"
+    )
+
+    print(
+        f"Total valid records: {len(messages)}"
+    )
+
+    print(
+        f"Safe records: {safe_count}"
+    )
+
+    print(
+        f"Phishing records: {phishing_count}"
     )
 
     return messages, labels
 
 
-def train_model():
-    messages, labels = create_training_dataset()
-
-    (
-        training_messages,
-        testing_messages,
-        training_labels,
-        testing_labels,
-    ) = train_test_split(
-        messages,
-        labels,
-        test_size=0.25,
-        random_state=42,
-        stratify=labels,
-    )
-
-
-    model_pipeline = Pipeline(
+def create_model_pipeline():
+    return Pipeline(
         [
             (
                 "tfidf",
                 TfidfVectorizer(
                     lowercase=True,
+                    strip_accents="unicode",
                     stop_words="english",
                     ngram_range=(1, 2),
-                    max_features=5000,
+                    min_df=2,
+                    max_df=0.98,
+                    max_features=12000,
+                    sublinear_tf=True,
                 ),
             ),
-
             (
                 "classifier",
                 LogisticRegression(
-                    max_iter=1000,
+                    max_iter=2000,
                     class_weight="balanced",
-                    random_state=42,
+                    solver="liblinear",
+                    random_state=RANDOM_STATE,
                 ),
             ),
         ]
     )
 
 
-    model_pipeline.fit(
-        training_messages,
-        training_labels,
-    )
-
-
+def evaluate_model(
+    model_pipeline,
+    testing_messages,
+    testing_labels,
+):
     predictions = model_pipeline.predict(
         testing_messages
     )
-
 
     accuracy = accuracy_score(
         testing_labels,
         predictions,
     )
 
+    precision = precision_score(
+        testing_labels,
+        predictions,
+        pos_label="phishing",
+        zero_division=0,
+    )
+
+    recall = recall_score(
+        testing_labels,
+        predictions,
+        pos_label="phishing",
+        zero_division=0,
+    )
+
+    f1 = f1_score(
+        testing_labels,
+        predictions,
+        pos_label="phishing",
+        zero_division=0,
+    )
+
+    matrix = confusion_matrix(
+        testing_labels,
+        predictions,
+        labels=[
+            "safe",
+            "phishing",
+        ],
+    )
+
+    print("\n" + "=" * 60)
+    print("MODEL EVALUATION")
+    print("=" * 60)
 
     print(
-        f"Model accuracy: {accuracy * 100:.2f}%"
+        f"Accuracy:  {accuracy * 100:.2f}%"
     )
+
+    print(
+        f"Precision: {precision * 100:.2f}%"
+    )
+
+    print(
+        f"Recall:    {recall * 100:.2f}%"
+    )
+
+    print(
+        f"F1 score:  {f1 * 100:.2f}%"
+    )
+
+    print("\nClassification report:")
 
     print(
         classification_report(
             testing_labels,
             predictions,
+            labels=[
+                "safe",
+                "phishing",
+            ],
+            zero_division=0,
         )
     )
 
+    print("Confusion matrix:")
 
+    print(
+        "Rows: actual labels"
+    )
+
+    print(
+        "Columns: predicted labels"
+    )
+
+    print(
+        "Label order: safe, phishing"
+    )
+
+    print(matrix)
+
+    return {
+        "accuracy": accuracy,
+        "precision": precision,
+        "recall": recall,
+        "f1": f1,
+    }
+
+
+def test_sample_predictions(
+    model_pipeline,
+):
+    sample_messages = [
+        (
+            "Sender: manager@company.example\n"
+            "Subject: Weekly project update\n"
+            "Body: The project meeting will "
+            "take place tomorrow at 10 AM."
+        ),
+        (
+            "Sender: security@unknown-alert.example\n"
+            "Subject: URGENT ACCOUNT SUSPENDED\n"
+            "Body: Verify your password and OTP "
+            "immediately using the link below."
+        ),
+    ]
+
+    print("\n" + "=" * 60)
+    print("SAMPLE PREDICTIONS")
+    print("=" * 60)
+
+    for message in sample_messages:
+        prediction = (
+            model_pipeline.predict(
+                [message]
+            )[0]
+        )
+
+        probabilities = (
+            model_pipeline.predict_proba(
+                [message]
+            )[0]
+        )
+
+        class_names = (
+            model_pipeline.named_steps[
+                "classifier"
+            ].classes_
+        )
+
+        probability_map = dict(
+            zip(
+                class_names,
+                probabilities,
+            )
+        )
+
+        phishing_probability = (
+            probability_map.get(
+                "phishing",
+                0,
+            )
+        )
+
+        subject_line = (
+            message.split("\n")[1]
+            .replace(
+                "Subject: ",
+                "",
+            )
+        )
+
+        print(
+            f"\nSubject: {subject_line}"
+        )
+
+        print(
+            f"Prediction: {prediction}"
+        )
+
+        print(
+            "Phishing probability: "
+            f"{phishing_probability * 100:.2f}%"
+        )
+
+
+def save_model(model_pipeline):
     MODEL_DIRECTORY.mkdir(
         parents=True,
         exist_ok=True,
@@ -191,9 +391,68 @@ def train_model():
         MODEL_PATH,
     )
 
+    print("\n" + "=" * 60)
+    print("MODEL SAVED")
+    print("=" * 60)
 
     print(
         f"Model saved to: {MODEL_PATH}"
+    )
+
+
+def train_model():
+    messages, labels = (
+        load_training_dataset()
+    )
+
+    (
+        training_messages,
+        testing_messages,
+        training_labels,
+        testing_labels,
+    ) = train_test_split(
+        messages,
+        labels,
+        test_size=0.20,
+        random_state=RANDOM_STATE,
+        stratify=labels,
+    )
+
+    print(
+        "\nTraining records: "
+        f"{len(training_messages)}"
+    )
+
+    print(
+        "Testing records: "
+        f"{len(testing_messages)}"
+    )
+
+    model_pipeline = (
+        create_model_pipeline()
+    )
+
+    print("\nTraining model...")
+
+    model_pipeline.fit(
+        training_messages,
+        training_labels,
+    )
+
+    evaluate_model(
+        model_pipeline,
+        testing_messages,
+        testing_labels,
+    )
+
+    test_sample_predictions(
+        model_pipeline
+    )
+
+    save_model(model_pipeline)
+
+    print(
+        "\nTraining completed successfully."
     )
 
 
