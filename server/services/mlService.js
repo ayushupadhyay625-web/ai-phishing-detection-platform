@@ -21,7 +21,7 @@ const sendPredictionRequest = async (
 
         body: JSON.stringify(requestData),
 
-        signal: AbortSignal.timeout(10000),
+        signal: AbortSignal.timeout(120000),
       }
     );
 
